@@ -1,0 +1,604 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Laboratori de màquines simples</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Barlow+Condensed:wght@600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: banda de capçalera amb pestanyes; a sota, escenari amb paper mil·limetrat + taula de controls al costat (s'apila al mòbil) */
+:root{
+  --paper:#edf0f3; --sheet:#ffffff; --grid:#e3e8ee; --ink:#1c2632; --muted:#586577; --line:#cdd5de;
+  --force:#2b57cc; --load:#bf4527; --accent:#d99a00; --ok:#23804e; --no:#b3261e;
+  --wood:#8a6a45; --rope:#5a4a36; --steel:#7d8a99;
+  --ff-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --ff-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --ff-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#10151b; --sheet:#171e26; --grid:#1f2833; --ink:#e5eaf0; --muted:#9aa7b6; --line:#2d3845;
+  --force:#7d9cff; --load:#ff7c5c; --accent:#f0bf45; --ok:#55c487; --no:#ff8a80;
+  --wood:#c49a68; --rope:#cdb592; --steel:#8e9bab; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#10151b; --sheet:#171e26; --grid:#1f2833; --ink:#e5eaf0; --muted:#9aa7b6; --line:#2d3845;
+  --force:#7d9cff; --load:#ff7c5c; --accent:#f0bf45; --ok:#55c487; --no:#ff8a80;
+  --wood:#c49a68; --rope:#cdb592; --steel:#8e9bab; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--ff-body);font-size:16px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{padding-block:28px 0;border-bottom:1px solid var(--line)}
+.eyebrow{margin:0;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+h1{font-family:var(--ff-display);font-weight:700;font-size:clamp(34px,5vw,52px);line-height:1;margin:6px 0 8px;text-wrap:balance;letter-spacing:.005em}
+.lede{margin:0 0 20px;color:var(--muted);max-width:60ch}
+nav.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tab{font:700 20px/1 var(--ff-display);letter-spacing:.03em;text-transform:uppercase;color:var(--muted);background:transparent;border:1px solid transparent;border-bottom:none;padding:12px 18px 11px;border-radius:8px 8px 0 0;cursor:pointer;position:relative;top:1px}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--paper);color:var(--ink);border-color:var(--line)}
+.tab:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+main{padding-block:24px 48px}
+.panel{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);gap:20px;align-items:start}
+.col{display:grid;gap:16px;min-width:0}
+.stage{position:relative;background-color:var(--sheet);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:20px 20px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.stage canvas{display:block;width:100%;aspect-ratio:16/10;max-width:100%}
+.status{position:absolute;left:12px;top:12px;font:700 13px/1 var(--ff-body);letter-spacing:.06em;text-transform:uppercase;padding:7px 10px;border-radius:999px;background:var(--paper);border:1px solid var(--line);color:var(--muted)}
+.status.eq{color:var(--ok);border-color:var(--ok)}
+.status.f{color:var(--force);border-color:var(--force)}
+.status.r{color:var(--load);border-color:var(--load)}
+
+.box{background:var(--sheet);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.box h2{font:700 22px/1.1 var(--ff-display);text-transform:uppercase;letter-spacing:.03em;margin:0 0 10px}
+.box h3{font:700 13px/1.2 var(--ff-body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px}
+.law{font:700 clamp(20px,2.6vw,26px)/1.3 var(--ff-mono);margin:0 0 12px;color:var(--ink)}
+.law sub{font-size:.6em}
+.calc{display:grid;gap:6px;font:500 14.5px/1.45 var(--ff-mono);margin:0;padding:0;list-style:none}
+.calc li{min-width:0;overflow-wrap:anywhere}
+.cF{color:var(--force)} .cR{color:var(--load)} .cA{color:var(--accent)}
+.note{margin:12px 0 0;color:var(--muted);font-size:15px;max-width:62ch}
+
+.controls{display:grid;gap:18px}
+.seg{display:flex;gap:6px;flex-wrap:wrap;border:none;margin:0;padding:0}
+.seg legend{font:700 13px/1.2 var(--ff-body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px;padding:0}
+.seg button{flex:1 1 0;min-width:64px;font:700 15px/1.15 var(--ff-body);padding:10px 8px;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--sheet);border-color:var(--ink)}
+.seg-help{font-size:14px;color:var(--muted);margin:8px 0 0}
+.ctl label{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-weight:700;font-size:15px;margin-bottom:4px}
+.ctl label small{font-weight:400;color:var(--muted);font-size:13px}
+.ctl .row{display:flex;gap:10px;align-items:center}
+.ctl input[type=range]{flex:1;min-width:0;accent-color:var(--ink);height:28px}
+.ctl.F input[type=range]{accent-color:var(--force)}
+.ctl.R input[type=range]{accent-color:var(--load)}
+.num{width:88px;font:500 15px var(--ff-mono);padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);text-align:right}
+.btn{font:700 15px/1.2 var(--ff-body);padding:11px 14px;border-radius:8px;border:1px solid var(--ink);background:var(--ink);color:var(--sheet);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+
+.repte .q{margin:0 0 12px}
+.repte .ans{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.repte input{width:110px;font:500 16px var(--ff-mono);padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink)}
+.repte .unit{font:500 15px var(--ff-mono);color:var(--muted)}
+.fb{margin:10px 0 0;min-height:1.5em;font-size:15px}
+.fb.ok{color:var(--ok);font-weight:700} .fb.no{color:var(--no)}
+.repte .btns{margin-top:12px}
+
+@media (max-width:860px){.panel{grid-template-columns:minmax(0,1fr)}.stage canvas{aspect-ratio:4/3}}
+@media (max-width:480px){.tab{font-size:17px;padding:10px 12px 9px}}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <p class="eyebrow">Tecnologia i Digitalització · 3r d'ESO</p>
+    <h1>Laboratori de màquines simples</h1>
+    <p class="lede">Mou els controls, observa què passa i comprova les lleis amb els números. Les forces es mesuren en newtons (N) i les distàncies en metres (m).</p>
+    <nav class="tabs" role="tablist" aria-label="Màquines">
+      <button class="tab" role="tab" id="t-palanca" data-tab="palanca" aria-selected="true">Palanca</button>
+      <button class="tab" role="tab" id="t-politja" data-tab="politja" aria-selected="false">Politja fixa</button>
+      <button class="tab" role="tab" id="t-polispasts" data-tab="polispasts" aria-selected="false">Politja mòbil i polispast</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+<!-- ===================== PALANCA ===================== -->
+<section class="panel" id="palanca" role="tabpanel" aria-labelledby="t-palanca">
+  <div class="col">
+    <div class="stage"><canvas id="cv-lever" aria-label="Simulació d'una palanca"></canvas><div class="status" id="lv-status">—</div></div>
+    <div class="box">
+      <h2>Llei de la palanca</h2>
+      <p class="law"><span class="cF">F · b<sub>F</sub></span> = <span class="cR">R · b<sub>R</sub></span></p>
+      <ul class="calc" id="lv-calc"></ul>
+      <p class="note" id="lv-note"></p>
+    </div>
+  </div>
+  <div class="col">
+    <div class="box controls">
+      <fieldset class="seg" id="lv-type">
+        <legend>Tipus de palanca</legend>
+        <button type="button" data-v="1" aria-pressed="true">1r grau</button>
+        <button type="button" data-v="2" aria-pressed="false">2n grau</button>
+        <button type="button" data-v="3" aria-pressed="false">3r grau</button>
+      </fieldset>
+      <p class="seg-help" id="lv-help"></p>
+      <div class="ctl R"><label for="lv-R">Resistència R <small>N</small></label><div class="row"><input type="range" id="lv-R" min="10" max="500" step="10" value="200"><input class="num" type="number" id="lv-R-n" min="10" max="500" step="10" value="200" aria-label="Resistència en newtons"></div></div>
+      <div class="ctl R"><label for="lv-bR">Braç de la resistència b<sub>R</sub> <small>m</small></label><div class="row"><input type="range" id="lv-bR" min="0.1" max="2" step="0.05" value="0.5"><input class="num" type="number" id="lv-bR-n" min="0.1" max="2" step="0.05" value="0.5" aria-label="Braç de la resistència en metres"></div></div>
+      <div class="ctl F"><label for="lv-bF">Braç de la força b<sub>F</sub> <small>m</small></label><div class="row"><input type="range" id="lv-bF" min="0.1" max="2" step="0.05" value="1"><input class="num" type="number" id="lv-bF-n" min="0.1" max="2" step="0.05" value="1" aria-label="Braç de la força en metres"></div></div>
+      <div class="ctl F"><label for="lv-F">Força aplicada F <small>N</small></label><div class="row"><input type="range" id="lv-F" min="0" max="2000" step="1" value="60"><input class="num" type="number" id="lv-F-n" min="0" max="2000" step="1" value="60" aria-label="Força en newtons"></div></div>
+      <div class="btns"><button class="btn" id="lv-eq" type="button">Calcula la força d'equilibri</button></div>
+    </div>
+    <div class="box repte" id="rp-lever">
+      <h3>Repte</h3>
+      <p class="q"></p>
+      <div class="ans"><input type="text" inputmode="decimal" aria-label="La teva resposta"><span class="unit"></span><button class="btn check" type="button">Comprova</button></div>
+      <p class="fb" aria-live="polite"></p>
+      <div class="btns"><button class="btn ghost try" type="button">Prova-ho al simulador</button><button class="btn ghost new" type="button">Un altre repte</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== POLITGES ===================== -->
+<section class="panel" id="politja" role="tabpanel" aria-labelledby="t-politja" hidden>
+  <div class="col">
+    <div class="stage"><canvas id="cv-pul" aria-label="Simulació d'una politja fixa"></canvas><div class="status" id="pl-status">—</div></div>
+    <div class="box">
+      <h2 id="pl-title">Politja fixa</h2>
+      <p class="law" id="pl-law"></p>
+      <ul class="calc" id="pl-calc"></ul>
+      <p class="note" id="pl-note"></p>
+    </div>
+  </div>
+  <div class="col">
+    <div class="box controls">
+      <p class="seg-help" id="pl-help" style="margin-top:0"></p>
+      <div class="ctl R"><label for="pl-R">Pes de la càrrega R <small>N</small></label><div class="row"><input type="range" id="pl-R" min="10" max="500" step="10" value="200"><input class="num" type="number" id="pl-R-n" min="10" max="500" step="10" value="200" aria-label="Pes de la càrrega en newtons"></div></div>
+      <div class="ctl F"><label for="pl-d">Corda que estires d <small>m</small></label><div class="row"><input type="range" id="pl-d" min="0" max="1" step="0.01" value="0"><input class="num" type="number" id="pl-d-n" min="0" max="1" step="0.01" value="0" aria-label="Corda estirada en metres"></div></div>
+      <div class="btns"><button class="btn" id="pl-play" type="button">Estira 1 metre</button><button class="btn ghost" id="pl-reset" type="button">Torna a l'inici</button></div>
+    </div>
+    <div class="box repte" id="rp-pul">
+      <h3>Repte</h3>
+      <p class="q"></p>
+      <div class="ans"><input type="text" inputmode="decimal" aria-label="La teva resposta"><span class="unit"></span><button class="btn check" type="button">Comprova</button></div>
+      <p class="fb" aria-live="polite"></p>
+      <div class="btns"><button class="btn ghost try" type="button">Prova-ho al simulador</button><button class="btn ghost new" type="button">Un altre repte</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== POLISPASTS ===================== -->
+<section class="panel" id="polispasts" role="tabpanel" aria-labelledby="t-polispasts" hidden>
+  <div class="col">
+    <div class="stage"><canvas id="cv-pol" aria-label="Simulació d'un polispast"></canvas><div class="status" id="po-status">—</div></div>
+    <div class="box">
+      <h2 id="po-title">Polispast</h2>
+      <p class="law"><span class="cF">F</span> = <span class="cR">R</span> / (2 · <span class="cA">n</span>)</p>
+      <ul class="calc" id="po-calc"></ul>
+      <p class="note">n és el nombre de politges mòbils. Cada politja mòbil té dos trams de corda que l'aguanten, i per cada tram passa la mateixa força F. Per això la càrrega queda repartida entre 2·n trams.</p>
+    </div>
+  </div>
+  <div class="col">
+    <div class="box controls">
+      <fieldset class="seg" id="po-n">
+        <legend>Politges mòbils (n)</legend>
+        <button type="button" data-v="1" aria-pressed="false">1</button>
+        <button type="button" data-v="2" aria-pressed="true">2</button>
+        <button type="button" data-v="3" aria-pressed="false">3</button>
+        <button type="button" data-v="4" aria-pressed="false">4</button>
+      </fieldset>
+      <p class="seg-help" id="po-help"></p>
+      <div class="ctl R"><label for="po-R">Pes de la càrrega R <small>N</small></label><div class="row"><input type="range" id="po-R" min="10" max="800" step="10" value="400"><input class="num" type="number" id="po-R-n" min="10" max="800" step="10" value="400" aria-label="Pes de la càrrega en newtons"></div></div>
+      <div class="ctl F"><label for="po-d">Corda que estires d <small>m</small></label><div class="row"><input type="range" id="po-d" min="0" max="1" step="0.01" value="0"><input class="num" type="number" id="po-d-n" min="0" max="1" step="0.01" value="0" aria-label="Corda estirada en metres"></div></div>
+      <div class="btns"><button class="btn" id="po-play" type="button">Estira 1 metre</button><button class="btn ghost" id="po-reset" type="button">Torna a l'inici</button></div>
+    </div>
+    <div class="box repte" id="rp-pol">
+      <h3>Repte</h3>
+      <p class="q"></p>
+      <div class="ans"><input type="text" inputmode="decimal" aria-label="La teva resposta"><span class="unit"></span><button class="btn check" type="button">Comprova</button></div>
+      <p class="fb" aria-live="polite"></p>
+      <div class="btns"><button class="btn ghost try" type="button">Prova-ho al simulador</button><button class="btn ghost new" type="button">Un altre repte</button></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<script>
+(function(){
+const root=document.documentElement;
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const fmt=(v,d=2)=>Number(v).toLocaleString('ca-ES',{maximumFractionDigits:d});
+const ORD={1:'1r',2:'2n',3:'3r'};
+const C={};
+function readColors(){const cs=getComputedStyle(root);['ink','muted','line','force','load','accent','ok','sheet','paper','wood','rope','steel'].forEach(k=>C[k]=cs.getPropertyValue('--'+k).trim());}
+readColors();
+
+/* ---------- utilitats de dibuix ---------- */
+function prep(cv){
+  const r=cv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
+  const W=Math.max(1,Math.round(r.width)),H=Math.max(1,Math.round(r.height));
+  if(cv.width!==W*dpr||cv.height!==H*dpr){cv.width=W*dpr;cv.height=H*dpr;}
+  const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
+  return {ctx,W,H};
+}
+function arrow(ctx,x1,y1,x2,y2,color,w){
+  w=w||3.5;const a=Math.atan2(y2-y1,x2-x1),hl=13;
+  ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=w;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2-Math.cos(a)*hl*.7,y2-Math.sin(a)*hl*.7);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-hl*Math.cos(a-.42),y2-hl*Math.sin(a-.42));ctx.lineTo(x2-hl*Math.cos(a+.42),y2-hl*Math.sin(a+.42));ctx.closePath();ctx.fill();
+}
+function tag(ctx,t,x,y,color,align){
+  align=align||'center';ctx.font='700 13px "JetBrains Mono", ui-monospace, monospace';
+  const w=ctx.measureText(t).width+12,h=22;let x0=align==='center'?x-w/2:align==='left'?x:x-w;
+  ctx.fillStyle=C.sheet;ctx.strokeStyle=color;ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.roundRect(x0,y-h/2,w,h,5);ctx.fill();ctx.stroke();
+  ctx.fillStyle=color;ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(t,x0+6,y+1);
+}
+function dim(ctx,x1,x2,y,color,text){
+  ctx.strokeStyle=color;ctx.lineWidth=1.3;ctx.setLineDash([]);
+  ctx.beginPath();ctx.moveTo(x1,y-7);ctx.lineTo(x1,y+7);ctx.moveTo(x2,y-7);ctx.lineTo(x2,y+7);ctx.moveTo(x1,y);ctx.lineTo(x2,y);ctx.stroke();
+  const s=Math.sign(x2-x1)||1;
+  [[x1,s],[x2,-s]].forEach(([x,d])=>{ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+7*d,y-4);ctx.lineTo(x+7*d,y+4);ctx.closePath();ctx.fillStyle=color;ctx.fill();});
+  tag(ctx,text,(x1+x2)/2,y,color);
+}
+function vdim(ctx,x,y1,y2,color,text,align){
+  ctx.strokeStyle=color;ctx.lineWidth=1.3;
+  ctx.beginPath();ctx.moveTo(x-6,y1);ctx.lineTo(x+6,y1);ctx.moveTo(x-6,y2);ctx.lineTo(x+6,y2);ctx.moveTo(x,y1);ctx.lineTo(x,y2);ctx.stroke();
+  if(Math.abs(y2-y1)>4)tag(ctx,text,x+(align==='right'?-10:10),(y1+y2)/2,color,align==='right'?'right':'left');
+  else tag(ctx,text,x+(align==='right'?-10:10),y1,color,align==='right'?'right':'left');
+}
+function hatch(ctx,x1,x2,y,up){
+  ctx.strokeStyle=C.muted;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x1,y);ctx.lineTo(x2,y);ctx.stroke();
+  ctx.lineWidth=1;ctx.beginPath();
+  for(let x=x1+4;x<x2;x+=10){ctx.moveTo(x,y);ctx.lineTo(x-7,y+(up?-9:9));}
+  ctx.stroke();
+}
+
+/* ---------- parells lliscador + número ---------- */
+function pair(id,obj,key,cb){
+  const r=document.getElementById(id),n=document.getElementById(id+'-n');
+  const set=(v,src,silent)=>{
+    v=parseFloat(v);if(isNaN(v))return;
+    v=Math.min(+r.max,Math.max(+r.min,v));obj[key]=v;
+    if(src!==r)r.value=v;if(src!==n)n.value=+v.toFixed(2);
+    if(!silent&&cb)cb(key);
+  };
+  r.addEventListener('input',()=>set(r.value,r));
+  n.addEventListener('change',()=>set(n.value,n));
+  return set;
+}
+function seg(id,cb){
+  const el=document.getElementById(id),bs=[...el.querySelectorAll('button')];
+  const select=v=>{bs.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v==String(v))));};
+  bs.forEach(b=>b.addEventListener('click',()=>{select(b.dataset.v);cb(+b.dataset.v);}));
+  return select;
+}
+
+/* =================== PALANCA =================== */
+const L={type:1,R:200,bR:0.5,bF:1,F:60,th:0,tgt:0};
+const cvL=document.getElementById('cv-lever');
+const HELP={
+  1:'El fulcre és entre la força i la resistència. Exemples: balancí, tisores, alicates.',
+  2:'La resistència és entre el fulcre i la força (b<sub>R</sub> &lt; b<sub>F</sub>). Sempre afavoreix: cal menys força. Exemples: carretó, trencanous.',
+  3:'La força és entre el fulcre i la resistència (b<sub>F</sub> &lt; b<sub>R</sub>). Cal més força, però guanyes rapidesa i precisió. Exemples: pinces, canya de pescar.'
+};
+const setR=pair('lv-R',L,'R',leverChanged),setbR=pair('lv-bR',L,'bR',leverChanged),setbF=pair('lv-bF',L,'bF',leverChanged),setF=pair('lv-F',L,'F',leverChanged);
+const selType=seg('lv-type',v=>{L.type=v;enforce('type');leverChanged();});
+function enforce(changed){
+  const r2=v=>Math.round(v*100)/100;
+  if(L.type===2&&L.bR>=L.bF){
+    if(changed==='bF'){setbR(r2(Math.max(0.1,L.bF-0.1)),null,true);}
+    else{let f=r2(L.bR+0.1);if(f>2){f=2;setbR(1.9,null,true);}setbF(f,null,true);}
+  }
+  if(L.type===3&&L.bF>=L.bR){
+    if(changed==='bR'){setbF(r2(Math.max(0.1,L.bR-0.1)),null,true);}
+    else{let r=r2(L.bF+0.1);if(r>2){r=2;setbF(1.9,null,true);}setbR(r,null,true);}
+  }
+}
+function leverChanged(k){
+  if(k==='bR'||k==='bF')enforce(k);
+  const MF=L.F*L.bF,MR=L.R*L.bR,bal=MF-MR,norm=Math.max(MF,MR,1);
+  const eq=Math.abs(bal)<=0.01*norm;
+  const sign=L.type===1?1:-1;
+  L.tgt=eq?0:sign*0.15*Math.tanh(4*bal/norm);
+  document.getElementById('lv-help').innerHTML=HELP[L.type];
+  const st=document.getElementById('lv-status');
+  st.className='status '+(eq?'eq':bal>0?'f':'r');
+  st.textContent=eq?'En equilibri':bal>0?'Guanya la força':'Guanya la resistència';
+  const Feq=MR/L.bF,am=L.bF/L.bR;
+  document.getElementById('lv-calc').innerHTML=
+    `<li class="cF">M<sub>F</sub> = F · b<sub>F</sub> = ${fmt(L.F)} · ${fmt(L.bF)} = ${fmt(MF)} N·m</li>`+
+    `<li class="cR">M<sub>R</sub> = R · b<sub>R</sub> = ${fmt(L.R)} · ${fmt(L.bR)} = ${fmt(MR)} N·m</li>`+
+    `<li>Força d'equilibri: F = R · b<sub>R</sub> / b<sub>F</sub> = ${fmt(L.R)} · ${fmt(L.bR)} / ${fmt(L.bF)} = <b>${fmt(Feq)} N</b></li>`+
+    `<li class="cA">Avantatge mecànic: b<sub>F</sub> / b<sub>R</sub> = ${fmt(am)}</li>`;
+  document.getElementById('lv-note').textContent=
+    Math.abs(am-1)<0.005?'Els dos braços són iguals: la força d\'equilibri és igual a la resistència.':
+    am>1?`El braç de la força és més llarg: necessites ${fmt(am)} vegades menys força que la resistència. Palanca afavorable.`:
+    `El braç de la força és més curt: necessites ${fmt(1/am)} vegades més força que la resistència. Palanca desfavorable.`;
+  kick();
+}
+document.getElementById('lv-eq').addEventListener('click',()=>{
+  const f=Math.round(L.R*L.bR/L.bF*100)/100;
+  if(f>2000){setF(2000);document.getElementById('lv-note').textContent+=` La força necessària (${fmt(f)} N) supera el màxim del simulador.`;}
+  else setF(f);
+});
+
+function drawLever(){
+  const {ctx,W,H}=prep(cvL);if(W<10)return;
+  const t=L.type,fy=H*0.57;let s,fx;
+  if(t===1){s=(W-90)/4.4;fx=W/2;}else{s=(W-110)/2.3;fx=62;}
+  const th=L.th,c=Math.cos(th),sn=Math.sin(th);
+  const P=m=>[fx+m*s*c,fy+m*s*sn];
+  const sR=t===1?-L.bR:L.bR,sF=L.bF;
+  const e0=t===1?sR-0.12:-0.12,e1=Math.max(sF,t===1?0:sR)+0.12;
+  const k=H/500;
+  // base i fulcre
+  hatch(ctx,fx-42,fx+42,fy+42,false);
+  ctx.fillStyle=C.accent;ctx.beginPath();ctx.moveTo(fx,fy+4);ctx.lineTo(fx-22,fy+42);ctx.lineTo(fx+22,fy+42);ctx.closePath();ctx.fill();
+  // barra
+  ctx.save();ctx.translate(fx,fy);ctx.rotate(th);
+  ctx.fillStyle=C.wood;ctx.beginPath();ctx.roundRect(e0*s,-6,(e1-e0)*s,12,3);ctx.fill();
+  ctx.restore();
+  ctx.fillStyle=C.ink;ctx.beginPath();ctx.arc(fx,fy,4,0,7);ctx.fill();
+  // càrrega
+  const bw=Math.max(28,Math.min(66,(16+Math.sqrt(L.R)*2.4)))*Math.min(1,k*1.3),bh=bw*0.8;
+  const [rx,ry]=P(sR);
+  ctx.save();ctx.translate(rx,ry);ctx.rotate(th);
+  ctx.fillStyle=C.load;ctx.globalAlpha=.18;ctx.fillRect(-bw/2,-6-bh,bw,bh);ctx.globalAlpha=1;
+  ctx.strokeStyle=C.load;ctx.lineWidth=2;ctx.strokeRect(-bw/2,-6-bh,bw,bh);
+  ctx.fillStyle=C.load;ctx.font='700 16px "Barlow Condensed", sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('R',0,-6-bh/2);
+  ctx.restore();
+  const maxV=Math.max(L.F,L.R,1),base=H*0.05,span=H*0.15;
+  const lenR=base+span*L.R/maxV,lenF=base+span*L.F/maxV;
+  const rTop=ry-6-bh-10;
+  arrow(ctx,rx,rTop-lenR,rx,rTop,C.load);
+  tag(ctx,'R = '+fmt(L.R)+' N',rx,rTop-lenR-14,C.load);
+  // força
+  const [px,py]=P(sF);
+  if(L.F>0){
+    if(t===1){arrow(ctx,px,py-10-lenF,px,py-8,C.force);tag(ctx,'F = '+fmt(L.F)+' N',px,py-lenF-24,C.force);}
+    else{arrow(ctx,px,py+10+lenF,px,py+8,C.force);tag(ctx,'F = '+fmt(L.F)+' N',px,py+lenF+24,C.force);}
+  }else{tag(ctx,'F = 0 N',px,t===1?py-30:py+30,C.force);}
+  // cotes dels braços (a la posició horitzontal)
+  const yd=fy+64;
+  if(t===1){
+    dim(ctx,fx-L.bR*s,fx,yd,C.load,'bR = '+fmt(L.bR)+' m');
+    dim(ctx,fx,fx+L.bF*s,yd,C.force,'bF = '+fmt(L.bF)+' m');
+  }else{
+    dim(ctx,fx,fx+L.bR*s,yd,C.load,'bR = '+fmt(L.bR)+' m');
+    dim(ctx,fx,fx+L.bF*s,yd+30,C.force,'bF = '+fmt(L.bF)+' m');
+  }
+  ctx.fillStyle=C.muted;ctx.font='700 12px "Atkinson Hyperlegible", sans-serif';ctx.textAlign='center';ctx.fillText('FULCRE',fx,fy+56);
+}
+let raf=0;
+function kick(){if(!raf)raf=requestAnimationFrame(step);}
+function step(){
+  raf=0;
+  const d=L.tgt-L.th;
+  L.th=reduce?L.tgt:L.th+d*0.12;
+  if(Math.abs(L.tgt-L.th)<0.0004)L.th=L.tgt;
+  if(!document.getElementById('palanca').hidden)drawLever();
+  if(L.th!==L.tgt)kick();
+}
+
+/* =================== POLITGES I POLISPASTS =================== */
+function drawPulleys(cv,n,R,d){
+  const {ctx,W,H}=prep(cv);if(W<10)return;
+  const ceil=24,fyP=ceil+46,groundY=H-22;
+  const sc=(H-ceil-150)/1.25; // px per metre
+  const h=n===0?d:d/(2*n);
+  const boxH=Math.max(30,46*H/500),boxW=Math.max(40,Math.min(92,22+Math.sqrt(R)*3));
+  const handY=fyP+50+d*sc;
+  // sostre
+  ctx.fillStyle=C.muted;ctx.globalAlpha=.12;ctx.fillRect(0,0,W,ceil);ctx.globalAlpha=1;
+  hatch(ctx,10,W-10,ceil,true);
+  hatch(ctx,10,W-10,groundY+0.5,false);
+  const pulley=(x,y,r,fixed)=>{
+    ctx.fillStyle=C.sheet;ctx.strokeStyle=fixed?C.steel:C.ink;ctx.lineWidth=3;
+    ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();ctx.stroke();
+    ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x,y,r-5,0,7);ctx.stroke();
+    ctx.fillStyle=fixed?C.steel:C.ink;ctx.beginPath();ctx.arc(x,y,3.5,0,7);ctx.fill();
+  };
+  const rope=()=>{ctx.strokeStyle=C.rope;ctx.lineWidth=3;ctx.lineCap='round';ctx.lineJoin='round';};
+  const load=(cx,bottom)=>{
+    ctx.fillStyle=C.load;ctx.globalAlpha=.18;ctx.fillRect(cx-boxW/2,bottom-boxH,boxW,boxH);ctx.globalAlpha=1;
+    ctx.strokeStyle=C.load;ctx.lineWidth=2;ctx.strokeRect(cx-boxW/2,bottom-boxH,boxW,boxH);
+    ctx.fillStyle=C.load;ctx.font='700 15px "JetBrains Mono", monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(fmt(R)+' N',cx,bottom-boxH/2);
+  };
+  const F=n===0?R:R/(2*n);
+  let handX,loadCx,support;
+  if(n===0){
+    const r=30,cx=W/2-30;
+    ctx.strokeStyle=C.steel;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(cx,ceil);ctx.lineTo(cx,fyP);ctx.stroke();
+    const bottom=groundY-h*sc,top=bottom-boxH;
+    rope();ctx.beginPath();ctx.moveTo(cx-r,top);ctx.lineTo(cx-r,fyP);ctx.arc(cx,fyP,r,Math.PI,0,false);ctx.lineTo(cx+r,handY);ctx.stroke();
+    pulley(cx,fyP,r,true);
+    load(cx-r,bottom);
+    handX=cx+r;loadCx=cx-r;support=1;
+    vdim(ctx,cx-r-boxW/2-18,groundY,bottom,C.load,'h = '+fmt(h)+' m','right');
+  }else{
+    const r=Math.max(12,Math.min(26,(W-170)/(4*n+1)));
+    const x0=W/2-2*r*n+r-36;
+    const bottom=groundY-h*sc,top=bottom-boxH,barY=top-24,my=barY-r-8;
+    // bloc fix
+    const fx0=x0+2*r,fxN=x0+2*r+4*r*(n-1);
+    ctx.strokeStyle=C.steel;ctx.lineWidth=4;ctx.beginPath();
+    for(let i=0;i<n;i++){const x=x0+2*r+4*r*i;ctx.moveTo(x,ceil);ctx.lineTo(x,fyP);}ctx.stroke();
+    // bloc mòbil
+    const mx0=x0,mxN=x0+4*r*(n-1),lc=(mx0+mxN)/2;
+    ctx.strokeStyle=C.ink;ctx.lineWidth=4;ctx.beginPath();
+    for(let i=0;i<n;i++){const x=x0+4*r*i;ctx.moveTo(x,my);ctx.lineTo(x,barY);}
+    ctx.moveTo(mx0-6,barY);ctx.lineTo(mxN+6,barY);ctx.moveTo(lc,barY);ctx.lineTo(lc,top);ctx.stroke();
+    // corda
+    rope();ctx.beginPath();ctx.moveTo(x0-r,ceil);ctx.lineTo(x0-r,my);
+    for(let i=0;i<n;i++){
+      const mx=x0+4*r*i,fx=x0+2*r+4*r*i;
+      ctx.arc(mx,my,r,Math.PI,0,true);
+      ctx.lineTo(mx+r,fyP);
+      ctx.arc(fx,fyP,r,Math.PI,0,false);
+      if(i<n-1)ctx.lineTo(fx+r,my);
+    }
+    handX=x0+4*r*n-r;ctx.lineTo(handX,handY);ctx.stroke();
+    // ancoratge
+    ctx.fillStyle=C.ink;ctx.beginPath();ctx.arc(x0-r,ceil+3,4,0,7);ctx.fill();
+    for(let i=0;i<n;i++){pulley(x0+2*r+4*r*i,fyP,r,true);pulley(x0+4*r*i,my,r,false);}
+    load(lc,bottom);loadCx=lc;support=2*n;
+    vdim(ctx,Math.min(x0-r,lc-boxW/2)-18,groundY,bottom,C.load,'h = '+fmt(h,3)+' m','right');
+    // nombre de trams
+    ctx.fillStyle=C.muted;ctx.font='700 13px "Atkinson Hyperlegible", sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';
+  }
+  // mà
+  ctx.fillStyle=C.muted;ctx.beginPath();ctx.roundRect(handX-11,handY-4,22,26,7);ctx.fill();
+  const lenF=H*0.04+H*0.14*F/Math.max(R,1);
+  arrow(ctx,handX,handY+26,handX,handY+26+lenF,C.force);
+  const right=handX+150<W;
+  tag(ctx,'F = '+fmt(F)+' N',right?handX+18:handX-18,handY+12,C.force,right?'left':'right');
+  vdim(ctx,right?handX+30:handX-30,fyP+50,handY,C.force,'d = '+fmt(d)+' m',right?'left':'right');
+  // rètol
+  ctx.font='700 13px "Atkinson Hyperlegible", sans-serif';ctx.fillStyle=C.muted;ctx.textAlign='right';ctx.textBaseline='top';
+  ctx.fillText(support===1?'1 tram aguanta la càrrega':support+' trams aguanten la càrrega',W-14,ceil+12);
+}
+
+function pulleyText(n,R,d){
+  const F=n===0?R:R/(2*n),h=n===0?d:d/(2*n),am=n===0?1:2*n;
+  return {F,h,am,html:
+    (n===0?`<li class="cF">F = R = <b>${fmt(F)} N</b></li>`:`<li class="cF">F = R / (2 · ${n}) = ${fmt(R)} / ${2*n} = <b>${fmt(F)} N</b></li>`)+
+    (n===0?`<li>La càrrega puja el mateix que estires: h = d = ${fmt(h)} m</li>`:`<li>La càrrega puja h = d / ${2*n} = ${fmt(d)} / ${2*n} = <b>${fmt(h,3)} m</b></li>`)+
+    `<li class="cA">Treball que fas: F · d = ${fmt(F)} · ${fmt(d)} = ${fmt(F*d)} J</li>`+
+    `<li class="cA">Treball que rep la càrrega: R · h = ${fmt(R)} · ${fmt(h,3)} = ${fmt(R*h)} J</li>`+
+    `<li>Avantatge mecànic: R / F = ${fmt(am)}</li>`};
+}
+
+/* --- Politges --- */
+const PL={n:0,R:200,d:0};
+const cvP=document.getElementById('cv-pul');
+const setPR=pair('pl-R',PL,'R',pulChanged),setPd=pair('pl-d',PL,'d',pulChanged);
+function pulChanged(){
+  const n=PL.n,o=pulleyText(n,PL.R,PL.d);
+  document.getElementById('pl-title').textContent=n===0?'Politja fixa':'Politja mòbil';
+  document.getElementById('pl-law').innerHTML=n===0?'<span class="cF">F</span> = <span class="cR">R</span>':'<span class="cF">F</span> = <span class="cR">R</span> / 2';
+  document.getElementById('pl-help').innerHTML=n===0?
+    'Està subjecta al sostre i no es mou. No redueix la força, però en canvia la direcció: estires cap avall per pujar la càrrega, que és més còmode.':
+    'Penja de la corda i puja amb la càrrega. Dos trams de corda l\'aguanten, i cadascun fa la meitat de la força. A dalt hi ha una politja fixa de guia perquè puguis estirar cap avall.';
+  document.getElementById('pl-calc').innerHTML=o.html;
+  document.getElementById('pl-note').textContent=n===0?'Amb la politja fixa no estalvies força: F i R són iguals, i la càrrega puja tant com estires.':'El que guanyes en força ho perds en recorregut: fas la meitat de força, però has d\'estirar el doble de corda. El treball és el mateix.';
+  const st=document.getElementById('pl-status');st.className='status f';st.textContent='F = '+fmt(o.F)+' N';
+  if(!document.getElementById('politja').hidden)drawPulleys(cvP,n,PL.R,PL.d);
+}
+
+/* --- Polispasts --- */
+const PO={n:2,R:400,d:0};
+const cvO=document.getElementById('cv-pol');
+const setOR=pair('po-R',PO,'R',polChanged),setOd=pair('po-d',PO,'d',polChanged);
+const selN=seg('po-n',v=>{PO.n=v;polChanged();});
+function polChanged(){
+  const o=pulleyText(PO.n,PO.R,PO.d);
+  document.getElementById('po-calc').innerHTML=o.html;
+  document.getElementById('po-title').textContent=PO.n===1?'Politja mòbil':'Polispast';
+  document.getElementById('po-help').innerHTML=PO.n===1?
+    'Amb una sola politja mòbil, dos trams de corda aguanten la càrrega i cadascun fa la meitat de la força. La politja fixa de dalt només serveix de guia perquè puguis estirar cap avall.':
+    `Un polispast combina ${PO.n} politges mòbils amb ${PO.n} de fixes. Hi ha ${2*PO.n} trams de corda que aguanten la càrrega, i per això la força es divideix entre ${2*PO.n}.`;
+  const st=document.getElementById('po-status');st.className='status f';st.textContent='F = '+fmt(o.F)+' N';
+  if(!document.getElementById('polispasts').hidden)drawPulleys(cvO,PO.n,PO.R,PO.d);
+}
+
+/* --- animació d'estirar --- */
+function play(setter,obj){
+  if(reduce){setter(obj.d>=1?0:1);return;}
+  const from=obj.d>=0.999?0:obj.d,t0=performance.now(),dur=2200*(1-from)+200;
+  const tick=now=>{const p=Math.min(1,(now-t0)/dur),e=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;setter(Math.round((from+(1-from)*e)*100)/100);if(p<1)requestAnimationFrame(tick);};
+  requestAnimationFrame(tick);
+}
+document.getElementById('pl-play').addEventListener('click',()=>play(setPd,PL));
+document.getElementById('pl-reset').addEventListener('click',()=>setPd(0));
+document.getElementById('po-play').addEventListener('click',()=>play(setOd,PO));
+document.getElementById('po-reset').addEventListener('click',()=>setOd(0));
+
+/* =================== REPTES =================== */
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+function repte(id,gen){
+  const el=document.getElementById(id),q=el.querySelector('.q'),inp=el.querySelector('input'),fb=el.querySelector('.fb'),un=el.querySelector('.unit');
+  let cur;
+  const nw=()=>{cur=gen();q.innerHTML=cur.text;un.textContent=cur.unit;inp.value='';fb.textContent='';fb.className='fb';};
+  const check=()=>{
+    const v=parseFloat(inp.value.replace(',','.'));
+    if(isNaN(v)){fb.className='fb no';fb.textContent='Escriu un número per comprovar-lo.';return;}
+    const ok=Math.abs(v-cur.ans)<=Math.max(0.011,Math.abs(cur.ans)*0.02);
+    fb.className='fb '+(ok?'ok':'no');
+    fb.innerHTML=ok?'Correcte! '+cur.expl:'Encara no. Pista: '+cur.hint;
+  };
+  el.querySelector('.check').addEventListener('click',check);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')check();});
+  el.querySelector('.new').addEventListener('click',nw);
+  el.querySelector('.try').addEventListener('click',()=>{cur.apply();el.closest('.panel').querySelector('.stage').scrollIntoView({behavior:reduce?'auto':'smooth',block:'nearest'});});
+  nw();
+}
+const ARMS=[0.2,0.25,0.4,0.5,0.6,0.75,0.8,1,1.2,1.5,2];
+repte('rp-lever',()=>{
+  const t=rnd(1,3),R=rnd(2,25)*20;let bR,bF;
+  do{bR=pick(ARMS);bF=pick(ARMS);}while(bR===bF||(t===2&&bR>=bF)||(t===3&&bF>=bR));
+  const ans=Math.round(R*bR/bF*100)/100;
+  return {unit:'N',ans,
+    text:`Tens una palanca de <b>${ORD[t]} grau</b>. La resistència és de <b>${fmt(R)} N</b> i està a <b>${fmt(bR)} m</b> del fulcre. Fas la força a <b>${fmt(bF)} m</b> del fulcre. Quina força cal per equilibrar-la?`,
+    hint:'aïlla F de la llei de la palanca: F = R · bR / bF.',
+    expl:`F = ${fmt(R)} · ${fmt(bR)} / ${fmt(bF)} = ${fmt(ans)} N.`,
+    apply:()=>{L.type=t;selType(t);setR(R,null,true);setbF(2,null,true);setbR(bR,null,true);setbF(bF,null,true);setF(Math.min(2000,ans));}};
+});
+repte('rp-pul',()=>{
+  const v=rnd(0,2),nom='una politja fixa';
+  if(v===0){const R=rnd(3,25)*20;return {unit:'N',ans:R,
+    text:`Vols pujar una càrrega de <b>${fmt(R)} N</b> amb ${nom}. Quina força has de fer?`,
+    hint:'la politja fixa no redueix la força, només en canvia la direcció.',expl:`F = R = ${fmt(R)} N.`,
+    apply:()=>{setPR(R,null,true);setPd(0);}};}
+  if(v===1){const F=rnd(3,25)*20;return {unit:'N',ans:F,
+    text:`Amb ${nom} fas una força de <b>${fmt(F)} N</b> i la càrrega queda en equilibri. Quant pesa la càrrega?`,
+    hint:'en una politja fixa, F i R són iguals.',expl:`R = F = ${fmt(F)} N.`,
+    apply:()=>{setPR(F,null,true);setPd(0);}};}
+  const d=pick([0.3,0.4,0.5,0.6,0.8,1]);return {unit:'m',ans:d,
+    text:`Amb ${nom} estires <b>${fmt(d)} m</b> de corda. Quants metres puja la càrrega?`,
+    hint:'amb la politja fixa, la càrrega puja el mateix que estires.',expl:`h = d = ${fmt(d)} m.`,
+    apply:()=>{setPd(d);}};
+});
+repte('rp-pol',()=>{
+  const v=rnd(0,2),n=rnd(1,4);
+  if(v===0){const R=rnd(4,40)*20,ans=Math.round(R/(2*n)*100)/100;return {unit:'N',ans,
+    text:`${n===1?'Una <b>politja mòbil</b> (amb una fixa de guia)':'Un polispast té <b>'+n+' politges mòbils</b> i'} aixeca una càrrega de <b>${fmt(R)} N</b>. Quina força cal fer?`,
+    hint:'F = R / (2 · n).',expl:`F = ${fmt(R)} / (2 · ${n}) = ${fmt(ans)} N.`,
+    apply:()=>{PO.n=n;selN(n);setOR(R,null,true);setOd(0);}};}
+  if(v===1){const F=rnd(2,10)*10,R=F*2*n;return {unit:'politja',ans:n,
+    text:`Pots fer una força de <b>${fmt(F)} N</b> i vols aixecar <b>${fmt(R)} N</b>. Quantes politges mòbils ha de tenir el polispast?`,
+    hint:'aïlla n: n = R / (2 · F).',expl:`n = ${fmt(R)} / (2 · ${fmt(F)}) = ${n} politges mòbils.`,
+    apply:()=>{PO.n=n;selN(n);setOR(R,null,true);setOd(0);}};}
+  const d=pick([0.4,0.6,0.8,1]),ans=Math.round(d/(2*n)*1000)/1000;
+  return {unit:'m',ans,
+    text:`Amb ${n===1?'una <b>politja mòbil</b>':'un polispast de <b>'+n+' politges mòbils</b>'} estires <b>${fmt(d)} m</b> de corda. Quant puja la càrrega?`,
+    hint:'h = d / (2 · n).',expl:`h = ${fmt(d)} / ${2*n} = ${fmt(ans,3)} m.`,
+    apply:()=>{PO.n=n;selN(n);setOd(d);}};
+});
+
+/* =================== PESTANYES =================== */
+const tabs=[...document.querySelectorAll('.tab')];
+function show(name){
+  tabs.forEach(b=>{const on=b.dataset.tab===name;b.setAttribute('aria-selected',String(on));b.tabIndex=on?0:-1;document.getElementById(b.dataset.tab).hidden=!on;});
+  redraw();
+}
+tabs.forEach((b,i)=>{
+  b.addEventListener('click',()=>{show(b.dataset.tab);try{history.replaceState(null,'','#'+b.dataset.tab);}catch(e){}});
+  b.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){const j=(i+(e.key==='ArrowRight'?1:tabs.length-1))%tabs.length;tabs[j].focus();tabs[j].click();}});
+});
+function redraw(){
+  if(!document.getElementById('palanca').hidden)drawLever();
+  if(!document.getElementById('politja').hidden)drawPulleys(cvP,PL.n,PL.R,PL.d);
+  if(!document.getElementById('polispasts').hidden)drawPulleys(cvO,PO.n,PO.R,PO.d);
+}
+const ro=new ResizeObserver(()=>redraw());[cvL,cvP,cvO].forEach(c=>ro.observe(c));
+const onTheme=()=>{readColors();redraw();};
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',onTheme);
+new MutationObserver(onTheme).observe(root,{attributes:true,attributeFilter:['data-theme']});
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(redraw);
+
+leverChanged();pulChanged();polChanged();
+const h=(location.hash||'').slice(1);
+show(['palanca','politja','polispasts'].includes(h)?h:'palanca');
+})();
+</script>
+
+</body></html>
